@@ -65,9 +65,10 @@ def _qhits_generator(handle, minLength):
             continue
         # report previous query
         if pq != q:
-            yield pq, pqsize, hits
-            # reset
-            pq, pqsize, hits = q, qsize, {}
+            r = [pq, pqsize, hits]
+            pq, pqsize, hits = q, qsize, {}  # reset
+            yield r
+            
         if t not in hits:
             hits[t] = []
         if qstrand=="+":
