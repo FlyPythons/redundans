@@ -29,7 +29,7 @@ def run_last(fasta, identity, threads, verbose=1):
     if not os.path.isfile(ref+".suf"):
         os.system("lastdb -P %s -W 11 %s %s" % (threads, ref, fasta))
     # run LAST
-    args1 = ["lastal", "-P", str(threads), "-f", "TAB", ref, fasta]#; print " ".join(args1)
+    args1 = ["lastal", "-P", str(threads), "-f", "BlastTab+", ref, fasta, " | awk '$13<=$14'"]#; print " ".join(args1)
     proc1 = subprocess.Popen(args1, stdout=subprocess.PIPE, stderr=sys.stderr)
     return proc1
     
@@ -54,12 +54,13 @@ def run_last_q2best(fasta, identity, threads, verbose=1):
 
 def _qhits_generator(handle, minLength):
     pq, pqsize, hits = '', 0, {}
+    
     for l in handle: 
         if l.startswith('#'): 
             continue
         # unpack
-        (score, t, tstart, talg, tstrand, tsize, q, qstart, qalg, qstrand, qsize, blocks) = l.split()[:12]
-        (score, qstart, qalg, qsize, tstart, talg, tsize) = map(int, (score, qstart, qalg, qsize, tstart, talg, tsize))
+        (q, t, _, qalg, _, _, qstart, qend, tstart, tend, _, _, qsize, tsize, score) = l.split()
+        (qalg, qstart, qend, tstart, tend, score, qsize, tsize) = map(int, (qalg, qstart, qend, tstart, tend, score, qsize, tsize))
         # skip reverse matches
         if t==q or tsize<qsize or qsize<minLength or tsize==qsize and t<q: 
             continue
@@ -70,12 +71,12 @@ def _qhits_generator(handle, minLength):
             pq, pqsize, hits = q, qsize, {}
         if t not in hits:
             hits[t] = []
-        if qstrand=="+":
-            s = qstart
-            e = s + qalg
+            
+        if qstart > qend:
+            s, e = qend, qstart
         else:
-            e = qsize - qstart
-            s = qsize - qstart - qalg
+            s, e = qstart, qend
+            
         hits[t].append((score, t, s, e))
     # make sure to report last bit
     if hits:
